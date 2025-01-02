@@ -20,9 +20,3 @@ GDBMedChem (?)
 GDB-N (?)
 
 Notes: Alchemy < GDBMedChem < GDB-17
-
-TO DO: SMILES -> Precompute input with rdkit -> Save to LMBD
-
-https://github.com/deepmodeling/Uni-Mol/blob/14e7e0e29d1f242ab00e12449a3bab5408180f51/unimol/notebooks/unimol_mol_repr_demo.ipynb
-https://github.com/deepmodeling/Uni-Mol/blob/14e7e0e29d1f242ab00e12449a3bab5408180f51/unimol/unimol/data/lmdb_dataset.py
-https://stackoverflow.com/questions/53576113/most-efficient-way-to-use-a-large-data-set-for-pytorch
