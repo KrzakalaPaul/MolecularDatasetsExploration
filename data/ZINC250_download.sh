@@ -6,9 +6,8 @@ URL="https://storage.googleapis.com/kaggle-data-sets/2028384/3362731/compressed/
 # Download 
 echo "Downloading raw files"
 wget $URL -O raw/ZINC250_compressed.zip
-unzip raw/ZINC250_compressed.zip -d ./raw/ZINC250_uncompressed
-mv raw/ZINC250_uncompressed/250k_rndm_ZINC250_drugs_clean_3.csv raw/ZINC250.csv
-rm raw/ZINC250_uncompressed -r
+unzip raw/ZINC250_compressed.zip -d raw
+mv raw/250k_rndm_zinc_drugs_clean_3.csv raw/ZINC250.csv
 
 # Split (and remove unvalid smiles)
 echo "Split datasets and remove invalid smiles"
@@ -26,3 +25,5 @@ rm raw/ZINC250.csv
 rm smiles/ZINC250_train.csv
 rm smiles/ZINC250_valid.csv
 rm smiles/ZINC250_test.csv
+rm raw/ZINC250_compressed -r
+rm raw/ZINC250_compressed.zip

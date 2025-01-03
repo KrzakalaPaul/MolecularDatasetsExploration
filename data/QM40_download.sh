@@ -8,7 +8,6 @@ echo "Downloading raw files"
 wget $URL -O raw/QM40_compressed.zip
 unzip raw/QM40_compressed.zip -d ./raw/QM40_uncompressed
 mv raw/QM40_uncompressed/QM40\ dataset/QM40_main.csv raw/QM40.csv
-rm raw/QM40_uncompressed -r
 
 # Preprocess
 echo "Preprocessing raw files"
@@ -30,3 +29,5 @@ rm raw/QM40.csv
 rm smiles/QM40_train.csv
 rm smiles/QM40_valid.csv
 rm smiles/QM40_test.csv
+rm raw/QM40_uncompressed -r
+rm raw/QM40_compressed.zip
