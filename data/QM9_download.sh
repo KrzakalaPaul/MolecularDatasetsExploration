@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # URL
-QM9_CSV_URL = "https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/qm9.csv"
+URL="https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/qm9.csv"
 
 # Download 
 echo "Downloading raw files"
@@ -9,7 +9,7 @@ wget $URL -O raw/QM9.csv
 
 # Preprocess
 echo "Preprocessing raw files"
-python ./utils/scripts/preprocessing_QM9.py 
+python ./scripts/preprocessing_QM9.py
 
 # Split (and remove unvalid smiles)
 echo "Split datasets and remove invalid smiles"
