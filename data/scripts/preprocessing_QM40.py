@@ -1,12 +1,11 @@
 import pandas as pd
 
-df = pd.read_csv('QM40.csv')
+# Load QM40 dataset
+df = pd.read_csv("raw/QM40.csv")
 
-# Remove every column except regression target and SMILES   
-df = df.drop(columns=['Zinc_id'])
-
-# Rename "smile" column to "smiles"
+# Remove every column except regression target and SMILES
+df.drop(columns=["Zinc_id"], inplace=True)
 df = df.rename(columns={'smile': 'smiles'})
 
-# Save the preprocessed data
-df.to_csv('QM40.csv', index=False)
+# Save
+df.to_csv("raw/QM40.csv", index=False)

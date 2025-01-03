@@ -22,3 +22,4 @@
 ## Notes
 
 - Alchemy < GDBMedChem < GDB-17
+- QM40 < ZINC 20
