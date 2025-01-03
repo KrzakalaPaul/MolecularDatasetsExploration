@@ -2,11 +2,11 @@
 
 ## Large Supervised Datasets (for end2end training)
 
-- **QM9**: Downloaded from [Hugging Face](https://huggingface.co/datasets/yairschiff/qm9) (Source: [Curated QM9](https://moldis-group.github.io/curatedQM9/) + rdkit)
+- **QM9**: Downloaded using [MoleculeNet link](https://moleculenet.org/datasets-1) 
 - **QM40**: Downloaded from [Figshare](https://figshare.com/articles/dataset/QM40_A_More_Realistic_QM_Dataset_for_Machine_Learning_in_Molecular_Science/25993060/1?file=47535647)
 - **ZINC-250k**: Downloaded from [Kaggle](https://www.kaggle.com/datasets/basu369victor/zinc250k?resource=download)
-- **PCBA**: Native on [MoleculeNet](https://moleculenet.org/datasets-1)
-- **Alchemy**: Available on [Hugging Face](https://huggingface.co/datasets/graphs-datasets/alchemy) + rdkit to get the smiles
+- **PCBA**: Downloaded using [MoleculeNet link](https://moleculenet.org/datasets-1) 
+- **Alchemy**: Downloaded on [Hugging Face](https://huggingface.co/datasets/graphs-datasets/alchemy) + rdkit to get the smiles
 
 ## Unsupervised Datasets (for pretraining)
 
@@ -22,3 +22,4 @@
 ## Notes
 
 - Alchemy < GDBMedChem < GDB-17
+- QM40 < ZINC 20
