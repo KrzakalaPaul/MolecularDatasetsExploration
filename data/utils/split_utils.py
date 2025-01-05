@@ -28,7 +28,7 @@ class Splitter:
 class RandomSplitter(Splitter):
 
     def split(self):
-        self.indices = np.random.permutation(self.indices)
+        np.random.shuffle(self.indices)
         n = len(self.indices)
         n_test = int(self.test_percentage * n)
         n_valid = int(self.valid_percentage * n)
@@ -42,10 +42,10 @@ class RandomSplitter(Splitter):
 class ScaffoldSplitter(Splitter):
 
     def __init__(
-        self, dataset_size, train_percentage, valid_percentage, test_percentage
+        self, train_percentage, valid_percentage, test_percentage
     ):
         super().__init__(
-            dataset_size, train_percentage, valid_percentage, test_percentage
+            train_percentage, valid_percentage, test_percentage
         )
 
         self.scaffolds = {}

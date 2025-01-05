@@ -120,12 +120,8 @@ if __name__ == "__main__":
         map_size=args.map_size_in_Ko * 1024,
     )
 
-    splitter = (
-        ScaffoldSplitter(len(smiles_list), *args.split_percentage)
-        if args.splitter == "scaffold"
-        else RandomSplitter(len(smiles_list), *args.split_percentage)
-    )
-
+    splitter = ScaffoldSplitter(*args.split_percentage) if args.splitter == "scaffold" else RandomSplitter(*args.split_percentage)
+    
     start_time = perf_counter()
 
     with env.begin(write=True) as txn:
@@ -136,7 +132,7 @@ if __name__ == "__main__":
             # Convert SMILES to graph
             graph = smiles2graph(smiles)
 
-            # If SMILES was valid save it, otherwise skip
+            # If SMILES gives valid molecule save it, otherwise skip
             if graph is None:
                 n_invalid += 1
                 continue
@@ -146,24 +142,21 @@ if __name__ == "__main__":
                 splitter.add(idx=i, smiles=smiles)
                 txn.put(f"{i}".encode("ascii"), data)
 
-            splitter.split()
+        splitter.split()
 
-            # Create train, validation, and test sets
-            for i, j in enumerate(splitter.train_indices):
-                data = pickle.loads(txn.get(f"{j}".encode("ascii")))
-                txn.put(f"train_{i}".encode("ascii"), pickle.dumps(data))
-                txn.delete(f"{j}".encode("ascii"))
+        # Create train, validation, and test sets
+        for i, j in enumerate(splitter.train_indices):
+            data = pickle.loads(txn.pop(f"{j}".encode("ascii")))
+            txn.put(f"train_{i}".encode("ascii"), pickle.dumps(data))
 
-            for i, j in enumerate(splitter.valid_indices):
-                data = pickle.loads(txn.get(f"{j}".encode("ascii")))
-                txn.put(f"valid_{i}".encode("ascii"), pickle.dumps(data))
-                txn.delete(f"{j}".encode("ascii"))
+        for i, j in enumerate(splitter.valid_indices):
+            data = pickle.loads(txn.pop(f"{j}".encode("ascii")))
+            txn.put(f"valid_{i}".encode("ascii"), pickle.dumps(data))
 
-            for i, j in enumerate(splitter.test_indices):
-                data = pickle.loads(txn.get(f"{j}".encode("ascii")))
-                txn.put(f"test_{i}".encode("ascii"), pickle.dumps(data))
-                txn.delete(f"{j}".encode("ascii"))
-
+        for i, j in enumerate(splitter.test_indices):
+            data = pickle.loads(txn.pop(f"{j}".encode("ascii")))
+            txn.put(f"test_{i}".encode("ascii"), pickle.dumps(data))
+            
     end_time = perf_counter()
     print(
         f"...done, took {end_time - start_time:.2f} seconds, removed {n_invalid} invalid SMILES."
