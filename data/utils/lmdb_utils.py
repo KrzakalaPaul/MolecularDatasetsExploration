@@ -15,6 +15,7 @@ class LMDBDataset:
         env = self.connect_db(self.db_path)
         with env.begin() as txn:
             self._keys = list(txn.cursor().iternext(values=False))
+        self.dataset_size = pickle.loads(env.begin().get(f"{self.split}_size".encode("ascii")))
 
     def connect_db(self, lmdb_path, save_to_self=False):
         env = lmdb.open(
@@ -32,7 +33,7 @@ class LMDBDataset:
             self.env = env
 
     def __len__(self):
-        return len(self._keys)
+        return self.dataset_size
 
     @lru_cache(maxsize=16)
     def __getitem__(self, idx):

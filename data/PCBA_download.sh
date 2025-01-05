@@ -6,7 +6,7 @@ URL="https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/pcba.csv.gz"
 # Download raw files
 echo "Downloading raw files"
 wget $URL -O raw/pcba.csv.gz
-unzip raw/pcba.csv.gz -d raw
+gzip raw/pcba.csv.gz -d 
 mv raw/pcba.csv smiles/PCBA.csv
 
 # Use RDKit to: 1) Remove invalid smiles, 2) Split the dataset, 3) Convert smiles to graphs

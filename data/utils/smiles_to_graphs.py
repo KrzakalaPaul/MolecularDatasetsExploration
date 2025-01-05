@@ -23,7 +23,7 @@ def safe_index(l, e):
         return len(l) - 1
 
 
-def smiles2graph(smiles):
+def smiles2graph(smiles, max_atoms=50):
 
     mol = MolFromSmiles(smiles)
     if mol is None:
@@ -32,6 +32,9 @@ def smiles2graph(smiles):
     for atom in mol.GetAtoms():
         atom_atomic_nums.append(safe_index(valid_atomic_nums, atom.GetAtomicNum()))
     atom_atomic_nums = np.array(atom_atomic_nums, dtype=np.uint8)
+    
+    if len(atom_atomic_nums) >= max_atoms:
+        return None
 
     if len(mol.GetBonds()) > 0:  # mol has bonds
         edges_list = []
@@ -143,6 +146,10 @@ if __name__ == "__main__":
                 txn.put(f"{i}".encode("ascii"), data)
 
         splitter.split()
+        
+        txn.put("train_size".encode("ascii"), pickle.dumps(len(splitter.train_indices)))
+        txn.put("valid_size".encode("ascii"), pickle.dumps(len(splitter.valid_indices)))
+        txn.put("test_size".encode("ascii"), pickle.dumps(len(splitter.test_indices)))
 
         # Create train, validation, and test sets
         for i, j in enumerate(splitter.train_indices):
