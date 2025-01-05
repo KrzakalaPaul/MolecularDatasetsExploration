@@ -8,8 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class LMDBDataset:
-    def __init__(self, db_path):
+    def __init__(self, db_path, split="train"):
         self.db_path = db_path
+        self.split = split
         assert os.path.isfile(self.db_path), "{} not found".format(self.db_path)
         env = self.connect_db(self.db_path)
         with env.begin() as txn:
@@ -37,6 +38,6 @@ class LMDBDataset:
     def __getitem__(self, idx):
         if not hasattr(self, "env"):
             self.connect_db(self.db_path, save_to_self=True)
-        datapoint_pickled = self.env.begin().get(f"{idx}".encode("ascii"))
+        datapoint_pickled = self.env.begin().get(f"{self.split}_{idx}".encode("ascii"))
         data = pickle.loads(datapoint_pickled)
         return data
