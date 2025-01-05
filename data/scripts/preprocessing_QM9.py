@@ -7,4 +7,4 @@ df = pd.read_csv("raw/QM9.csv")
 df.drop(columns=["mol_id"], inplace=True)
 
 # Save
-df.to_csv("raw/QM9.csv", index=False)
+df.to_csv("smiles/QM9.csv", index=False)

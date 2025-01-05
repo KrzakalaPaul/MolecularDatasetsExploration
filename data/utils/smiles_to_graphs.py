@@ -7,6 +7,7 @@ import pandas as pd
 import os
 from time import perf_counter
 from multiprocessing import Pool
+from split_utils import RandomSplitter, ScaffoldSplitter
 
 valid_atomic_nums = list(range(1, 119)) + ["ukn"]
 valid_bond_types = ["SINGLE", "DOUBLE", "TRIPLE", "AROMATIC", "ukn"]
@@ -25,6 +26,8 @@ def safe_index(l, e):
 def smiles2graph(smiles):
 
     mol = MolFromSmiles(smiles)
+    if mol is None:
+        return None
     atom_atomic_nums = []
     for atom in mol.GetAtoms():
         atom_atomic_nums.append(safe_index(valid_atomic_nums, atom.GetAtomicNum()))
@@ -56,27 +59,39 @@ def smiles2graph(smiles):
         edge_index = np.empty((2, 0), dtype=np.uint8)
         edge_attr = np.empty((0, 1), dtype=np.uint8)
 
-    return atom_atomic_nums, edge_index, edge_attr
-
-
-def process_smiles(smiles):
-    atom_atomic_nums, edge_index, edge_attr = smiles2graph(smiles)
-    graph_data = {
+    graph = {
         "atom_atomic_nums": atom_atomic_nums,
         "edge_index": edge_index,
         "edge_attr": edge_attr,
     }
-    return graph_data
+
+    return graph
 
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Convert SMILES to graphs.")
+    parser = argparse.ArgumentParser(
+        description="Parse command line arguments for dataset splitting."
+    )
     parser.add_argument(
         "--dataset_name",
         type=str,
         required=True,
-        help="Smiles dataset name. Should be in smiles/[dataset_name].csv",
+        help="Raw dataset name. Should be in raw/[dataset_name].csv",
+    )
+    parser.add_argument(
+        "--splitter",
+        type=str,
+        required=True,
+        choices=["random", "scaffold"],
+        help="Type of splitter to use.",
+    )
+    parser.add_argument(
+        "--split_percentage",
+        type=float,
+        nargs=3,
+        required=True,
+        help="Split percentages for train, validation, and test sets.",
     )
     parser.add_argument(
         "--map_size_in_Ko", type=int, required=True, help="Map size in kilobytes."
@@ -105,29 +120,31 @@ if __name__ == "__main__":
         map_size=args.map_size_in_Ko * 1024,
     )
 
+    splitter = (
+        ScaffoldSplitter(len(smiles_list), *args.split_percentage)
+        if args.splitter == "scaffold"
+        else RandomSplitter(len(smiles_list), *args.split_percentage)
+    )
+
     start_time = perf_counter()
 
     with env.begin(write=True) as txn:
 
-        if args.n_threads == 1:
-            # Single process version
-            for i, smiles in enumerate(smiles_list):
-                graph_data = process_smiles(smiles)
+        n_invalid = 0
+        for i, smiles in enumerate(smiles_list):
+
+            # Convert SMILES to graph
+            graph = smiles2graph(smiles)
+
+            if graph is None:
+                n_invalid += 1
+                continue
+            else:
                 targets = csv.iloc[i].values
-                data = pickle.dumps((graph_data, targets))
-                txn.put(f"{i}".encode("ascii"), data)
-        else:
-            # Multi process version
-            with Pool() as pool:
-                for i, graph_data in enumerate(
-                    pool.imap_unordered(process_smiles, smiles_list)
-                ):
-                    targets = csv.iloc[i].values
-                data = pickle.dumps((graph_data, targets))
-                txn.put(f"{i}".encode("ascii"), data)
+                data = pickle.dumps((graph, targets))
+                split = splitter(idx=i, smiles=smiles)
+                txn.put(f"split_{i}".encode("ascii"), data)
 
     end_time = perf_counter()
-    print(
-        f"Conversion of {args.dataset_name} to graph with rdkit done, took {end_time - start_time:.2f} seconds"
-    )
+    print(f"...done, took {end_time - start_time:.2f} seconds")
     env.close()
