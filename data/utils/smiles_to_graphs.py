@@ -136,15 +136,39 @@ if __name__ == "__main__":
             # Convert SMILES to graph
             graph = smiles2graph(smiles)
 
+            # If SMILES was valid save it, otherwise skip
             if graph is None:
                 n_invalid += 1
                 continue
             else:
                 targets = csv.iloc[i].values
                 data = pickle.dumps((graph, targets))
-                split = splitter(idx=i, smiles=smiles)
-                txn.put(f"split_{i}".encode("ascii"), data)
+                splitter.add(idx=i, smiles=smiles)
+                txn.put(f"{i}".encode("ascii"), data)
+
+            splitter.split()
+
+            # Create train, validation, and test sets
+            for i, j in enumerate(splitter.train_indices):
+                data = pickle.loads(txn.get(f"{j}".encode("ascii")))
+                txn.put(f"train_{i}".encode("ascii"), pickle.dumps(data))
+                txn.delete(f"{j}".encode("ascii"))
+
+            for i, j in enumerate(splitter.valid_indices):
+                data = pickle.loads(txn.get(f"{j}".encode("ascii")))
+                txn.put(f"valid_{i}".encode("ascii"), pickle.dumps(data))
+                txn.delete(f"{j}".encode("ascii"))
+
+            for i, j in enumerate(splitter.test_indices):
+                data = pickle.loads(txn.get(f"{j}".encode("ascii")))
+                txn.put(f"test_{i}".encode("ascii"), pickle.dumps(data))
+                txn.delete(f"{j}".encode("ascii"))
 
     end_time = perf_counter()
-    print(f"...done, took {end_time - start_time:.2f} seconds, removed {n_invalid} invalid SMILES.")
+    print(
+        f"...done, took {end_time - start_time:.2f} seconds, removed {n_invalid} invalid SMILES."
+    )
+    print(f"Train: {len(splitter.train_indices)}")
+    print(f"Valid: {len(splitter.valid_indices)}")
+    print(f"Test: {len(splitter.test_indices)}")
     env.close()

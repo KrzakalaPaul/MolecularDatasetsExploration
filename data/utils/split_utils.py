@@ -4,43 +4,42 @@ import numpy as np
 from rdkit.Chem.Scaffolds.MurckoScaffold import MurckoScaffoldSmiles
 
 
-class OnlineSplitter:
+class Splitter:
 
-    def __init__(
-        self, max_dataset_size, train_percentage, valid_percentage, test_percentage
-    ):
+    def __init__(self, train_percentage, valid_percentage, test_percentage):
 
-        if train_percentage + valid_percentage + test_percentage != 1.0:
-            raise ValueError("Train, validation, and test percentages must sum to 1.0")
+        assert train_percentage + valid_percentage + test_percentage == 1
 
-        self.probs = np.array([train_percentage, valid_percentage, test_percentage])
-        self.n_train_max = int(train_percentage * max_dataset_size)
-        self.n_train = 0
-        self.n_valid_max = int(valid_percentage * max_dataset_size)
-        self.n_valid = 0
-        self.n_test_max = int(test_percentage * max_dataset_size)
-        self.n_test = 0
+        self.train_percentage = train_percentage
+        self.valid_percentage = valid_percentage
+        self.test_percentage = test_percentage
+        self.indices = []
 
-    def get_random_split(self):
-        return np.random.choice(["train", "valid", "test"], p=self.probs)
+    def add(self, idx, smiles):
+        # Use to add a new data point to the splitter
+        self.indices.append(idx)
 
-    def get_split(self, idx, smiles):
-        return ...
-
-    def __call__(self, idx=None, smiles=None):
-        split = self.get_split(idx, smiles)
-        # TO DO: update probs to stay closer to the target split percentages
-        return split
+    def split(self):
+        self.train_indices = ...
+        self.valid_indices = ...
+        self.test_indices = ...
 
 
-class RandomSplitter(OnlineSplitter):
+class RandomSplitter(Splitter):
 
-    def get_split(self, idx, smiles):
-        split = self.get_random_split()
-        return split
+    def split(self):
+        self.indices = np.random.permutation(self.indices)
+        n = len(self.indices)
+        n_test = int(self.test_percentage * n)
+        n_valid = int(self.valid_percentage * n)
+        n_train = n - n_valid - n_test
+
+        self.train_indices = self.indices[:n_train]
+        self.valid_indices = self.indices[n_train : n_train + n_valid]
+        self.test_indices = self.indices[n_train + n_valid :]
 
 
-class ScaffoldSplitter(OnlineSplitter):
+class ScaffoldSplitter(Splitter):
 
     def __init__(
         self, dataset_size, train_percentage, valid_percentage, test_percentage
@@ -51,14 +50,33 @@ class ScaffoldSplitter(OnlineSplitter):
 
         self.scaffolds = {}
 
-    def get_split(self, idx, smiles):
+    def add(self, idx, smiles):
         scaffold = MurckoScaffoldSmiles(smiles)
         if scaffold not in self.scaffolds:
-            split = self.get_random_split()
-            self.scaffolds[scaffold] = split
-        else:
-            split = self.scaffolds[scaffold]
-        return split
+            self.scaffolds[scaffold] = [idx]
+        self.scaffolds[scaffold].append(idx)
+        self.indices.append(idx)
+
+    def split(self):
+        scaffold_indices = list(self.scaffolds.values())
+        np.random.shuffle(scaffold_indices)
+
+        self.train_indices = []
+        self.valid_indices = []
+        self.test_indices = []
+
+        n = len(self.indices)
+        n_test = int(self.test_percentage * n)
+        n_valid = int(self.valid_percentage * n)
+        n_train = n - n_valid - n_test
+
+        for scaffold_group in scaffold_indices:
+            if len(self.train_indices) + len(scaffold_group) <= n_train:
+                self.train_indices.extend(scaffold_group)
+            elif len(self.valid_indices) + len(scaffold_group) <= n_valid:
+                self.valid_indices.extend(scaffold_group)
+            else:
+                self.test_indices.extend(scaffold_group)
 
 
 if __name__ == "__main__":
@@ -69,15 +87,14 @@ if __name__ == "__main__":
     test_percentage = 0.1
     invalid_percentage = 0.1
 
-    splitter = RandomSplitter(
-        dataset_size, train_percentage, valid_percentage, test_percentage
-    )
+    splitter = RandomSplitter(train_percentage, valid_percentage, test_percentage)
 
     for i in range(dataset_size):
         invalid = np.random.rand() < invalid_percentage
         if not invalid:
-            splitter(i)
+            splitter.add(i, None)
+    splitter.split()
 
-    print(splitter.n_train)
-    print(splitter.n_valid)
-    print(splitter.n_test)
+    print(len(splitter.train_indices))
+    print(len(splitter.valid_indices))
+    print(len(splitter.test_indices))
