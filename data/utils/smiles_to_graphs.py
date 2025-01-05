@@ -146,5 +146,5 @@ if __name__ == "__main__":
                 txn.put(f"split_{i}".encode("ascii"), data)
 
     end_time = perf_counter()
-    print(f"...done, took {end_time - start_time:.2f} seconds")
+    print(f"...done, took {end_time - start_time:.2f} seconds, removed {n_invalid} invalid SMILES.")
     env.close()

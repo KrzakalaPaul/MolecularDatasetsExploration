@@ -29,30 +29,7 @@ class OnlineSplitter:
 
     def __call__(self, idx=None, smiles=None):
         split = self.get_split(idx, smiles)
-        if split == "train":
-            self.n_train += 1
-            if self.n_train == self.n_train_max:
-                self.probs[0] = 0
-                try:
-                    self.probs /= np.sum(self.probs)
-                except:
-                    pass
-        elif split == "valid":
-            self.n_valid += 1
-            if self.n_valid == self.n_valid_max:
-                self.probs[1] = 0
-                try:
-                    self.probs /= np.sum(self.probs)
-                except:
-                    pass
-        elif split == "test":
-            self.n_test += 1
-            if self.n_test == self.n_test_max:
-                self.probs[2] = 0
-                try:
-                    self.probs /= np.sum(self.probs)
-                except:
-                    pass
+        # TO DO: update probs to stay closer to the target split percentages
         return split
 
 
