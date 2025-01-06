@@ -11,7 +11,7 @@
 ## Unsupervised Datasets (for pretraining)
 
 - **ZINC 20**: Select tranches manually from [ZINC 20](https://zinc20.docking.org/) + run script
-- **PubChem**: Using [PubChemPy](https://pubchempy.readthedocs.io/en/latest/)
+- **PubChem**: Using [Pub Rest](https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest)
 - **GDBMedChem**: (TO DO)
 - **GDB-N**: (TO DO)
 
