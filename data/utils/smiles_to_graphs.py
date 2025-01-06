@@ -7,7 +7,8 @@ import pandas as pd
 import os
 from time import perf_counter
 from multiprocessing import Pool
-from split_utils import RandomSplitter, ScaffoldSplitter
+from .split_utils import RandomSplitter, ScaffoldSplitter
+from rdkit import RDLogger
 
 valid_atomic_nums = list(range(1, 119)) + ["ukn"]
 valid_bond_types = ["SINGLE", "DOUBLE", "TRIPLE", "AROMATIC", "ukn"]
@@ -24,7 +25,7 @@ def safe_index(l, e):
 
 
 def smiles2graph(smiles, max_atoms=50):
-
+    RDLogger.DisableLog('rdApp.*')
     mol = MolFromSmiles(smiles)
     if mol is None:
         return None

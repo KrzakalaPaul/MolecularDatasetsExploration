@@ -15,7 +15,9 @@ def get_smiles(cid_min, cid_max, max_heavy_atom_count = 32):
     dataframe = pd.read_csv(StringIO(response.text), index_col=0)
 
     dataframe = dataframe[dataframe['HeavyAtomCount'] <= max_heavy_atom_count]
-    smiles = dataframe['SMILES'].values
+    dataframe = dataframe.dropna()
+    dataframe.rename(columns={"SMILES": "smiles"}, inplace=True)
+    smiles = dataframe['smiles']
     
     return smiles
 
@@ -71,6 +73,6 @@ if __name__ == '__main__':
         cid_max = pointer + chunk_size
         smiles = get_smiles(cid_min, cid_max, max_heavy_atom_count = max_heavy_atom_count)
         n_collected += len(smiles)
-        pd.DataFrame(smiles).to_csv(f'smiles/pubchem/{cid_min}-{cid_max}.csv', index=False)
+        smiles.to_csv(f'smiles/pubchem/{cid_min}-{cid_max}.csv', index=False)
         pointer += chunk_size
         print('Total smiles collected:', n_collected)
