@@ -65,8 +65,6 @@ if __name__ == '__main__':
     pointer = 1
     n_collected = 0
     n_chunks = largest_cid // chunk_size 
-    n_chunks = 10
-    chunk_size = 10000
 
     for i in tqdm(range(n_chunks)):
         if max_dataset_size is not None and n_collected >= max_dataset_size:

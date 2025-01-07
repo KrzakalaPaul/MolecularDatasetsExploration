@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Download ALCHEMY dataset and convery to SMILES
-echo "Downloading SMILES files (this can take approximately 1 hour)"
+echo "Downloading SMILES files"
 python ./scripts/download_ALCHEMY.py
 
 # Use RDKit to: 1) Remove invalid smiles, 2) Split the dataset, 3) Convert smiles to graphs
