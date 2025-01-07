@@ -45,7 +45,7 @@ def get_largest_cid(cid_min = 100000000, cid_max = 200000000):
 
 if __name__ == '__main__':
 
-    os.makedirs('smiles/pubchem', exist_ok=True)
+    os.makedirs('smiles/PUBCHEM', exist_ok=True)
 
     parser = argparse.ArgumentParser(description='Download SMILES from PubChem.')
     parser.add_argument('--chunk_size', type=int, default=10**6, help='Size of each chunk of CIDs to process.')
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     chunk_size = args.chunk_size
     max_heavy_atom_count = args.max_heavy_atom_count
     max_dataset_size = args.max_dataset_size
-    os.makedirs('smiles/pubchem', exist_ok=True)
+    os.makedirs('smiles/PUBCHEM', exist_ok=True)
     
     largest_cid = get_largest_cid()
     print('largest_cid:', largest_cid)
@@ -73,6 +73,6 @@ if __name__ == '__main__':
         cid_max = pointer + chunk_size
         smiles = get_smiles(cid_min, cid_max, max_heavy_atom_count = max_heavy_atom_count)
         n_collected += len(smiles)
-        smiles.to_csv(f'smiles/pubchem/{cid_min}-{cid_max}.csv', index=False)
+        smiles.to_csv(f'smiles/PUBCHEM/{cid_min}-{cid_max}.csv', index=False)
         pointer += chunk_size
         print('Total smiles collected:', n_collected)

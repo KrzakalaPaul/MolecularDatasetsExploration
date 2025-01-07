@@ -7,7 +7,7 @@ import pandas as pd
 import os
 from time import perf_counter
 from multiprocessing import Pool
-from .split_utils import RandomSplitter, ScaffoldSplitter
+from split_utils import RandomSplitter, ScaffoldSplitter
 from rdkit import RDLogger
 
 valid_atomic_nums = list(range(1, 119)) + ["ukn"]
