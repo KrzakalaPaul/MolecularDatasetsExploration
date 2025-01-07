@@ -12,11 +12,26 @@ def get_smiles(cid_min, cid_max, max_heavy_atom_count = 32):
     url = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/property/HeavyAtomCount,SMILES/csv'
     data = {'cid': cid_list}
     response = post(url, data=data)
+    if response.status_code == 504:
+        print('Error:', response.text)
+        print('Retrying with smaller chunck size...')
+        smiles1 = get_smiles(cid_min, (cid_min + cid_max) // 2, max_heavy_atom_count = max_heavy_atom_count)
+        smiles2 = get_smiles((cid_min + cid_max) // 2, cid_max, max_heavy_atom_count = max_heavy_atom_count)
+        return pd.concat([smiles1, smiles2])
+    elif response.status_code != 200:
+        print('Error:', response.text)
+        print('Move to next chunck...')
+        return pd.DataFrame({'smiles': []})
     dataframe = pd.read_csv(StringIO(response.text), index_col=0)
-    dataframe = dataframe.dropna()
-    dataframe = dataframe[dataframe['HeavyAtomCount'] <= max_heavy_atom_count]
-    dataframe.rename(columns={"SMILES": "smiles"}, inplace=True)
-    smiles = dataframe['smiles']
+    try:
+        dataframe = dataframe.dropna()
+        dataframe = dataframe[dataframe['HeavyAtomCount'] <= max_heavy_atom_count]
+        dataframe.rename(columns={"SMILES": "smiles"}, inplace=True)
+        smiles = dataframe['smiles']
+    except:
+        print('Error:', response.text)
+        print(dataframe.head())
+        return pd.DataFrame({'smiles': []})
     
     return smiles
 
@@ -50,21 +65,23 @@ if __name__ == '__main__':
     parser.add_argument('--chunk_size', type=int, default=10**6, help='Size of each chunk of CIDs to process.')
     parser.add_argument('--max_heavy_atom_count', type=int, default=32, help='Maximum number of heavy atoms in a molecule.')
     parser.add_argument('--max_dataset_size', type=int, default=None, help='Maximum number of SMILES to collect.')
+    parser.add_argument('--start', type=int, default=0, help='Starting CID.')
 
     args = parser.parse_args()
 
     chunk_size = args.chunk_size
     max_heavy_atom_count = args.max_heavy_atom_count
     max_dataset_size = args.max_dataset_size
+    start = args.start
     os.makedirs('smiles/PUBCHEM', exist_ok=True)
     
     largest_cid = 172640030 #get_largest_cid()
     print('largest_cid:', largest_cid)
 
     stop = False
-    pointer = 1
+    pointer = start + 1
     n_collected = 0
-    n_chunks = largest_cid // chunk_size 
+    n_chunks = 1 + (largest_cid - start) // chunk_size
 
     for i in tqdm(range(n_chunks)):
         if max_dataset_size is not None and n_collected >= max_dataset_size:
@@ -73,6 +90,6 @@ if __name__ == '__main__':
         cid_max = pointer + chunk_size
         smiles = get_smiles(cid_min, cid_max, max_heavy_atom_count = max_heavy_atom_count)
         n_collected += len(smiles)
-        smiles.to_csv(f'smiles/PUBCHEM/{cid_min}-{cid_max}.csv', index=False)
+        smiles.to_csv(f'smiles/PUBCHEM/{cid_min}-{cid_max-1}.csv', index=False)
         pointer += chunk_size
         print('Total smiles collected:', n_collected)

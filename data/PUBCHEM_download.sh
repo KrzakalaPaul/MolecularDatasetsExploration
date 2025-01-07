@@ -2,7 +2,7 @@
 
 # Download all smilles by chuncks
 echo "Downloading SMILES files (this can take approximately 1 hour)"
-python ./scripts/download_PUBCHEM.py --chunk_size 1000000
+python ./scripts/download_PUBCHEM.py --chunk_size 250000 --start 3225000
 
 # Use RDKit to: 1) Remove invalid smiles, 2) Split the dataset, 3) Convert smiles to graphs
 echo "Processing smiles with RDKit..."
