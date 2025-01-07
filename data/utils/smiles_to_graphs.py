@@ -8,8 +8,29 @@ import os
 from time import perf_counter
 from split_utils import RandomSplitter, ScaffoldSplitter
 from rdkit import RDLogger
-from lmdb_utils import open_db, format_db
+import lmdb
+import logging
 
+logger = logging.getLogger(__name__)
+
+def open_db(path, split, mapsize=1099511627776, delete=True):
+    file = os.path.join(path, f"{split}.lmdb")
+    if not os.path.exists(path):
+        os.makedirs(path)
+    if os.path.exists(file) and delete:
+        os.remove(file)
+    env = lmdb.open(
+                    file,
+                    subdir=False,
+                    readonly=False,
+                    lock=False,
+                    readahead=False,
+                    meminit=False,
+                    map_size=mapsize
+                    )
+    return env
+ 
+ 
 valid_atomic_nums = list(range(1, 119)) + ["ukn"]
 valid_bond_types = ["SINGLE", "DOUBLE", "TRIPLE", "AROMATIC", "ukn"]
 

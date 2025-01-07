@@ -68,4 +68,4 @@ if __name__ == "__main__":
     csv = pd.DataFrame(columns)
     
     # Save the csv
-    csv.to_csv("alchemy.csv", index=False)
+    csv.to_csv("smiles/ALCHEMY.csv", index=False)

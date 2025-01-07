@@ -13,9 +13,8 @@ def get_smiles(cid_min, cid_max, max_heavy_atom_count = 32):
     data = {'cid': cid_list}
     response = post(url, data=data)
     dataframe = pd.read_csv(StringIO(response.text), index_col=0)
-
-    dataframe = dataframe[dataframe['HeavyAtomCount'] <= max_heavy_atom_count]
     dataframe = dataframe.dropna()
+    dataframe = dataframe[dataframe['HeavyAtomCount'] <= max_heavy_atom_count]
     dataframe.rename(columns={"SMILES": "smiles"}, inplace=True)
     smiles = dataframe['smiles']
     
@@ -59,13 +58,16 @@ if __name__ == '__main__':
     max_dataset_size = args.max_dataset_size
     os.makedirs('smiles/PUBCHEM', exist_ok=True)
     
-    largest_cid = get_largest_cid()
+    largest_cid = 172640030 #get_largest_cid()
     print('largest_cid:', largest_cid)
 
     stop = False
     pointer = 1
     n_collected = 0
-    n_chunks = largest_cid // chunk_size
+    n_chunks = largest_cid // chunk_size 
+    n_chunks = 10
+    chunk_size = 10000
+
     for i in tqdm(range(n_chunks)):
         if max_dataset_size is not None and n_collected >= max_dataset_size:
             break
