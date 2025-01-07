@@ -1,18 +1,21 @@
 from smiles_to_graphs import smiles2graph
+from lmdb_utils import format_db, open_db
 import pickle
 from numpy import random
 import argparse
 import lmdb
 import os 
 import pandas as pd
+from tqdm import tqdm
+from multiprocessing import Pool
 
-def add_smiles_list(env,smiles_list,train_percentage,valid_percentage):
+def add_smiles_list(env_train, env_valid, smiles_list,train_percentage,valid_percentage):
     
     n_invalid = 0
     n_train = 0
     n_valid = 0
     
-    with env.begin(write=True) as txn:
+    with env_train.begin(write=True) as txn_train, env_valid.begin(write=True) as txn_valid:
         
         n_invalid = 0
         for i, smiles in enumerate(smiles_list):
@@ -27,11 +30,12 @@ def add_smiles_list(env,smiles_list,train_percentage,valid_percentage):
             else:
                 data = pickle.dumps(graph)
                 split = random.choice(["train", "valid"], p=[train_percentage, valid_percentage])
-                key = split+f"_{i}"
-                txn.put(key.encode("ascii"), data)
+                key = f"{i}".encode("ascii")
                 if split == "train":
+                    txn_train.put(key, data)
                     n_train += 1
                 else:
+                    txn_valid.put(key, data)
                     n_valid += 1
     
     return n_invalid, n_train, n_valid
@@ -62,27 +66,11 @@ if __name__ == "__main__":
     train_percentage, valid_percentage = args.split_percentage
     n_threads = args.n_threads  
     
-    file = f"graphs/{dataset_name}.lmdb"
-
-    if os.path.exists(file):
-        os.remove(file)
-
-    env = lmdb.open(
-        file,
-        subdir=False,
-        readonly=False,
-        lock=False,
-        readahead=False,
-        meminit=False,
-        max_readers=1,
-        map_size=1099511627776
-    )
+    path = f"graphs/{dataset_name}"
+    env_train = open_db(path, "train")
+    env_valid = open_db(path, "valid")
         
-    dir = f'smiles/{dataset_name}'
-    files = os.listdir(dir)
-
-    from tqdm import tqdm
-    from multiprocessing import Pool
+    smiles_files = os.listdir(f'smiles/{dataset_name}')
 
     n_threads = 8
 
@@ -92,9 +80,9 @@ if __name__ == "__main__":
         n_train_total = 0
         n_valid_total = 0
 
-        for file in tqdm(files):
+        for file in tqdm(smiles_files):
             smiles_list = pd.read_csv(os.path.join(dir, file)).values[:, 0]
-            n_invalid, n_train, n_valid = add_smiles_list(env, smiles_list, train_percentage=train_percentage, valid_percentage=valid_percentage)
+            n_invalid, n_train, n_valid = add_smiles_list(env_train, env_valid, smiles_list, train_percentage=train_percentage, valid_percentage=valid_percentage)
             n_invalid_total += n_invalid
             n_train_total += n_train
             n_valid_total += n_valid
@@ -102,10 +90,10 @@ if __name__ == "__main__":
         
         def process_file(file):
             smiles_list = pd.read_csv(os.path.join(dir, file)).values[:, 0]
-            return add_smiles_list(env, smiles_list, train_percentage=train_percentage, valid_percentage=valid_percentage)
+            return add_smiles_list(env_train, env_valid, smiles_list, train_percentage=train_percentage, valid_percentage=valid_percentage)
         
         with Pool(n_threads) as p:
-            results = list(tqdm(p.imap(process_file, files), total=len(files)))
+            results = list(tqdm(p.imap(process_file, smiles_files), total=len(smiles_files)))
             
         n_invalid_total = sum([r[0] for r in results])
         n_train_total = sum([r[1] for r in results])
@@ -115,6 +103,7 @@ if __name__ == "__main__":
     print(f"Total number of training graphs: {n_train_total}")
     print(f"Total number of validation graphs: {n_valid_total}")
     
-    with env.begin(write=True) as txn:
-        txn.put("train_size".encode("ascii"), pickle.dumps(n_train_total))
-        txn.put("valid_size".encode("ascii"), pickle.dumps(n_valid_total))
+    format_db(env_train)
+    format_db(env_valid)
+    
+    

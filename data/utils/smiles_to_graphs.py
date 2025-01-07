@@ -1,14 +1,14 @@
 import argparse
 import numpy as np
 import pickle
-import lmdb
+from tqdm import tqdm
 from rdkit.Chem import MolFromSmiles
 import pandas as pd
 import os
 from time import perf_counter
-from multiprocessing import Pool
 from split_utils import RandomSplitter, ScaffoldSplitter
 from rdkit import RDLogger
+from lmdb_utils import open_db, format_db
 
 valid_atomic_nums = list(range(1, 119)) + ["ukn"]
 valid_bond_types = ["SINGLE", "DOUBLE", "TRIPLE", "AROMATIC", "ukn"]
@@ -98,41 +98,35 @@ if __name__ == "__main__":
         help="Split percentages for train, validation, and test sets.",
     )
     parser.add_argument(
-        "--map_size_in_Ko", type=int, required=True, help="Map size in kilobytes."
+        "--map_size", type=int, required=True, help="Map size in kilobytes."
     )
-    parser.add_argument("--n_threads", type=int, default=1, help="Number of threads.")
     args = parser.parse_args()
-
+    
+    # Get dataset name and split percentages from command line arguments
+    dataset_name = args.dataset_name
+    split_percentage = args.split_percentage
+    
+    # Load the dataset from CSV file
     csv_path = f"smiles/{args.dataset_name}.csv"
-    csv = pd.read_csv(csv_path)
+    targets = pd.read_csv(csv_path)
 
-    smiles_list = csv["smiles"].tolist()
-    csv = csv.drop(columns="smiles")
-
-    file = f"graphs/{args.dataset_name}.lmdb"
-    if os.path.exists(file):
-        os.remove(file)
-
-    env = lmdb.open(
-        file,
-        subdir=False,
-        readonly=False,
-        lock=False,
-        readahead=False,
-        meminit=False,
-        max_readers=1,
-        map_size=args.map_size_in_Ko * 1024,
-    )
-
-    splitter = ScaffoldSplitter(*args.split_percentage) if args.splitter == "scaffold" else RandomSplitter(*args.split_percentage)
+    # Extract SMILES strings and remove the column from targets
+    smiles_list = targets["smiles"].tolist()
+    targets.drop(columns="smiles", inplace=True)
+    
+    # Open a temporary LMDB database to store the graphs
+    path = f"graphs/{args.dataset_name}"
+    split = "temp"
+    env_temp = open_db(path, split, args.map_size)
+    
+    # Initialize the splitter based on the chosen type
+    splitter = ScaffoldSplitter(*split_percentage) if args.splitter == "scaffold" else RandomSplitter(*split_percentage)
     
     start_time = perf_counter()
 
-    with env.begin(write=True) as txn:
-
+    with env_temp.begin(write=True) as txn_temp:
         n_invalid = 0
-        for i, smiles in enumerate(smiles_list):
-
+        for i, smiles in enumerate(tqdm(smiles_list, desc="Processing SMILES")):
             # Convert SMILES to graph
             graph = smiles2graph(smiles)
 
@@ -141,30 +135,34 @@ if __name__ == "__main__":
                 n_invalid += 1
                 continue
             else:
-                targets = csv.iloc[i].values
-                data = pickle.dumps((graph, targets))
+                target = targets.iloc[i].values
+                data = pickle.dumps((graph, target))
                 splitter.add(idx=i, smiles=smiles)
-                txn.put(f"{i}".encode("ascii"), data)
+                txn_temp.put(f"{i}".encode("ascii"), data)
 
+        # Perform the dataset split
         splitter.split()
         
-        txn.put("train_size".encode("ascii"), pickle.dumps(len(splitter.train_indices)))
-        txn.put("valid_size".encode("ascii"), pickle.dumps(len(splitter.valid_indices)))
-        txn.put("test_size".encode("ascii"), pickle.dumps(len(splitter.test_indices)))
-
-        # Create train, validation, and test sets
-        for i, j in enumerate(splitter.train_indices):
-            data = pickle.loads(txn.pop(f"{j}".encode("ascii")))
-            txn.put(f"train_{i}".encode("ascii"), pickle.dumps(data))
-
-        for i, j in enumerate(splitter.valid_indices):
-            data = pickle.loads(txn.pop(f"{j}".encode("ascii")))
-            txn.put(f"valid_{i}".encode("ascii"), pickle.dumps(data))
-
-        for i, j in enumerate(splitter.test_indices):
-            data = pickle.loads(txn.pop(f"{j}".encode("ascii")))
-            txn.put(f"test_{i}".encode("ascii"), pickle.dumps(data))
+        # Save the split datasets into separate LMDB files
+        for split, split_percentage in zip(["train", "valid", "test"], split_percentage):
+            path = f"graphs/{args.dataset_name}"
+            map_size = int(args.map_size * split_percentage)
+            env_split = open_db(path, split, map_size)
             
+            indices = getattr(splitter, f"{split}_indices")
+            
+            with env_split.begin(write=True) as txn_split:
+                for i, j in enumerate(indices):
+                    data = pickle.loads(txn_temp.pop(f"{j}".encode("ascii")))
+                    txn_split.put(f"{i}".encode("ascii"), pickle.dumps(data))
+            
+                txn_split.put("size".encode("ascii"), str(len(indices)).encode("ascii"))
+            
+    # Remove the temporary LMDB database
+    temp_db_path = f"graphs/{args.dataset_name}/temp.lmdb"
+    if os.path.exists(temp_db_path):
+        os.remove(temp_db_path)
+
     end_time = perf_counter()
     print(
         f"...done, took {end_time - start_time:.2f} seconds, removed {n_invalid} invalid SMILES."
@@ -172,4 +170,3 @@ if __name__ == "__main__":
     print(f"Train: {len(splitter.train_indices)}")
     print(f"Valid: {len(splitter.valid_indices)}")
     print(f"Test: {len(splitter.test_indices)}")
-    env.close()

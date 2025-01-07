@@ -3,10 +3,40 @@ import os
 import pickle
 from functools import lru_cache
 import logging
+import os 
 
 logger = logging.getLogger(__name__)
 
-
+def open_db(path, split, mapsize=1099511627776):
+    file = os.path.join(path, f"{split}.lmdb")
+    if not os.path.exists(path):
+        os.makedirs(path)
+    if os.path.exists(file):
+        os.remove(file)
+    env = lmdb.open(
+                    file,
+                    subdir=False,
+                    readonly=False,
+                    lock=False,
+                    readahead=False,
+                    meminit=False,
+                    max_readers=1,
+                    map_size=mapsize
+                    )
+    return env
+    
+    
+def format_db(env):
+    with env.begin(write=True) as txn:
+        cursor = txn.cursor()
+        new_key = 0
+        for key, value in cursor:
+            txn.delete(key)
+            txn.put(f"{new_key}".encode("ascii"), value)
+            new_key += 1
+        txn.put("size".encode("ascii"), str(new_key).encode("ascii"))
+            
+ 
 class LMDBDataset:
     def __init__(self, db_path, split="train"):
         self.db_path = db_path
