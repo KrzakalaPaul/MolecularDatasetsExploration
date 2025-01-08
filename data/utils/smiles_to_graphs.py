@@ -45,7 +45,7 @@ def safe_index(l, e):
         return len(l) - 1
 
 
-def smiles2graph(smiles, max_atoms=50):
+def smiles2graph(smiles, max_atoms=32):
     RDLogger.DisableLog('rdApp.*')
     mol = MolFromSmiles(smiles)
     if mol is None:
