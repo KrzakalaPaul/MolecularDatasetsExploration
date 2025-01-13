@@ -2,6 +2,7 @@ import os
 import pickle
 import lmdb
 from functools import lru_cache
+import numpy as np
 
 class LMDBDataset:
     def __init__(self, db_path, split="train"):
@@ -37,3 +38,12 @@ class LMDBDataset:
         datapoint_pickled = self.env.begin().get(f"{self.split}_{idx}".encode("ascii"))
         data = pickle.loads(datapoint_pickled)
         return data
+
+def to_dense(data):
+    n_atoms = len(data["atom_atomic_nums"])
+    edge_index = data["edge_index"]
+    A = np.zeros((n_atoms,n_atoms))
+    for i, (start, end) in enumerate(edge_index.T):
+        A[start, end] = 1
+    return A
+    

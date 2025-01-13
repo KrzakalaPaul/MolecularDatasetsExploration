@@ -55,7 +55,7 @@ def smiles2graph(smiles, max_atoms=32):
         atom_atomic_nums.append(safe_index(valid_atomic_nums, atom.GetAtomicNum()))
     atom_atomic_nums = np.array(atom_atomic_nums, dtype=np.uint8)
     
-    if len(atom_atomic_nums) >= max_atoms:
+    if len(atom_atomic_nums) > max_atoms:
         return None
 
     if len(mol.GetBonds()) > 0:  # mol has bonds
