@@ -16,4 +16,5 @@ os.makedirs("smiles/PUBCHEM", exist_ok=True)
 
 for chunk_id, chunk in enumerate(chunk_iter):
     chunk.drop(columns=chunk.columns[0], inplace=True)
+    chunk.columns = ['smiles']
     chunk.to_csv(f"smiles/PUBCHEM/{chunk_id}.csv", index=False)

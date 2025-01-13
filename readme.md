@@ -16,8 +16,10 @@
 - **GDB-N**: (TO DO)
 
 ## Small Supervised Datasets (for transfer learning)
+Following OGB benchmark we can consider:
 
-- **MoleculeNet**: Provides a full suite of tasks
+- **tox21, bace, bbbp, clintox, muv, sider,  toxcast**: For Binary Classification
+- **esol, freesol, lipo**: For Regression
 
 ## Notes
 
