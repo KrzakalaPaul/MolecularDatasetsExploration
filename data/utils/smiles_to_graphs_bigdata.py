@@ -1,4 +1,4 @@
-from smiles_to_graphs import smiles2graph, open_db
+from smiles_to_graphs import smiles2graph, open_db, add_labels_to_db
 import pickle
 from numpy import random
 import argparse
@@ -142,8 +142,10 @@ if __name__ == "__main__":
     # Concatenate all the chunks
     env_train = open_db(path, "train")
     add_size_to_db(env_train, 0)
+    add_labels_to_db(env_train)
     env_valid = open_db(path, "valid")
     add_size_to_db(env_valid, 0)
+    add_labels_to_db(env_valid)
         
     previous_size = int(env_train.begin().get("size".encode("ascii")).decode("ascii"))
     

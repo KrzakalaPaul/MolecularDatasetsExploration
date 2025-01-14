@@ -10,8 +10,17 @@ from split_utils import RandomSplitter, ScaffoldSplitter
 from rdkit import RDLogger
 import lmdb
 import logging
+from scipy.sparse import csgraph, csr_matrix
+
+valid_atomic_nums = [6, 8, 7, 17, 16, 9, 35, 15, 53, 14, 11, 33, 80, 50, 5, 20, 19, 30, 26, 34, 13, 29, 12, 82, 24, 27, 1, 28, 56, 78, 25, "ukn"]
+valid_bond_types = ["SINGLE", "DOUBLE", "TRIPLE", "AROMATIC", "ukn"]
 
 logger = logging.getLogger(__name__)
+
+def add_labels_to_db(env):
+    with env.begin(write=True) as txn:
+        txn.put("node_labels".encode("ascii"), str(valid_atomic_nums).encode("ascii"))
+        txn.put("edge_labels".encode("ascii"), str(valid_bond_types).encode("ascii"))
 
 def open_db(path, split, mapsize=1099511627776, delete=True):
     file = os.path.join(path, f"{split}.lmdb")
@@ -29,11 +38,6 @@ def open_db(path, split, mapsize=1099511627776, delete=True):
                     map_size=mapsize
                     )
     return env
- 
- 
-valid_atomic_nums = list(range(1, 119)) + ["ukn"]
-valid_bond_types = ["SINGLE", "DOUBLE", "TRIPLE", "AROMATIC", "ukn"]
-
 
 def safe_index(l, e):
     """
@@ -45,49 +49,49 @@ def safe_index(l, e):
         return len(l) - 1
 
 
-def smiles2graph(smiles, max_atoms=32):
+def smiles2graph(smiles, max_size=32):
     RDLogger.DisableLog('rdApp.*')
     mol = MolFromSmiles(smiles)
     if mol is None:
         return None
-    atom_atomic_nums = []
+    node_labels = []
     for atom in mol.GetAtoms():
-        atom_atomic_nums.append(safe_index(valid_atomic_nums, atom.GetAtomicNum()))
-    atom_atomic_nums = np.array(atom_atomic_nums, dtype=np.uint8)
+        node_labels.append(safe_index(valid_atomic_nums, atom.GetAtomicNum()))
+    node_labels = np.array(node_labels, dtype=np.uint8)
+    size = len(node_labels)
     
-    if len(atom_atomic_nums) > max_atoms:
+    if size > max_size:
         return None
+    
+    edges_i = []
+    edges_j = []
+    edges_labels = []
 
-    if len(mol.GetBonds()) > 0:  # mol has bonds
-        edges_list = []
-        edge_features_list = []
-        for bond in mol.GetBonds():
-            i = bond.GetBeginAtomIdx()
-            j = bond.GetEndAtomIdx()
+    for bond in mol.GetBonds():
+        i = bond.GetBeginAtomIdx()
+        j = bond.GetEndAtomIdx()
+        bondtype = str(bond.GetBondType())
+        
+        edges_i.append(i)
+        edges_j.append(j)
+        edges_i.append(j)
+        edges_j.append(i)
 
-            edge_feature = str(bond.GetBondType())
-            edge_feature = safe_index(valid_bond_types, edge_feature)
+        edges_labels.append(safe_index(valid_bond_types, bondtype)+1)
+        edges_labels.append(safe_index(valid_bond_types, bondtype)+1)
 
-            # add edges in both directions
-            edges_list.append((i, j))
-            edge_features_list.append(edge_feature)
-            edges_list.append((j, i))
-            edge_features_list.append(edge_feature)
-
-        # data.edge_index: Graph connectivity in COO format with shape [2, num_edges]
-        edge_index = np.array(edges_list, dtype=np.uint8).T
-
-        # data.edge_attr: Edge feature matrix with shape [num_edges, num_edge_features]
-        edge_attr = np.array(edge_features_list, dtype=np.uint8)
-
-    else:  # mol has no bonds
-        edge_index = np.empty((2, 0), dtype=np.uint8)
-        edge_attr = np.empty((0, 1), dtype=np.uint8)
+    adjacency_matrix = csr_matrix((np.ones(len(edges_i), dtype=np.uint8), (edges_i, edges_j)), shape=(size,size))
+    edges_labels = csr_matrix((np.array(edges_labels, dtype=np.uint8), (edges_i, edges_j)), shape=(size,size))
+    SP_matrix = csgraph.shortest_path(adjacency_matrix, directed=False, unweighted=True)
+    if np.max(SP_matrix) == np.inf:
+        return None
+    SP_matrix = SP_matrix.astype(np.uint8)
 
     graph = {
-        "atom_atomic_nums": atom_atomic_nums,
-        "edge_index": edge_index,
-        "edge_attr": edge_attr,
+        "node_labels": node_labels,
+        "adjacency_matrix": adjacency_matrix,
+        "edges_labels": edges_labels,
+        "SP_matrix": SP_matrix
     }
 
     return graph
@@ -178,6 +182,8 @@ if __name__ == "__main__":
                     txn_split.put(f"{i}".encode("ascii"), pickle.dumps(data))
             
                 txn_split.put("size".encode("ascii"), str(len(indices)).encode("ascii"))
+            
+            add_labels_to_db(env_split)    
             
     # Remove the temporary LMDB database
     temp_db_path = f"graphs/{args.dataset_name}/temp.lmdb"
