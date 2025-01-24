@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def add_labels_to_db(env):
     with env.begin(write=True) as txn:
         txn.put("node_labels".encode("ascii"), str(valid_atomic_nums).encode("ascii"))
-        txn.put("edge_labels".encode("ascii"), str(valid_bond_types).encode("ascii"))
+        txn.put("edge_labels".encode("ascii"), str(["None"]+valid_bond_types).encode("ascii"))
 
 def open_db(path, split, mapsize=1099511627776, delete=True):
     file = os.path.join(path, f"{split}.lmdb")
@@ -65,7 +65,7 @@ def smiles2graph(smiles, max_size=32):
     
     edges_i = []
     edges_j = []
-    edges_labels = []
+    edge_labels = []
 
     for bond in mol.GetBonds():
         i = bond.GetBeginAtomIdx()
@@ -77,11 +77,11 @@ def smiles2graph(smiles, max_size=32):
         edges_i.append(j)
         edges_j.append(i)
 
-        edges_labels.append(safe_index(valid_bond_types, bondtype)+1)
-        edges_labels.append(safe_index(valid_bond_types, bondtype)+1)
+        edge_labels.append(safe_index(valid_bond_types, bondtype)+1)
+        edge_labels.append(safe_index(valid_bond_types, bondtype)+1)
 
     adjacency_matrix = csr_matrix((np.ones(len(edges_i), dtype=np.uint8), (edges_i, edges_j)), shape=(size,size))
-    edges_labels = csr_matrix((np.array(edges_labels, dtype=np.uint8), (edges_i, edges_j)), shape=(size,size))
+    edge_labels = csr_matrix((np.array(edge_labels, dtype=np.uint8), (edges_i, edges_j)), shape=(size,size))
     SP_matrix = csgraph.shortest_path(adjacency_matrix, directed=False, unweighted=True)
     if np.max(SP_matrix) == np.inf:
         return None
@@ -90,7 +90,7 @@ def smiles2graph(smiles, max_size=32):
     graph = {
         "node_labels": node_labels,
         "adjacency_matrix": adjacency_matrix,
-        "edges_labels": edges_labels,
+        "edge_labels": edge_labels,
         "SP_matrix": SP_matrix
     }
 
