@@ -10,7 +10,7 @@ gzip raw/PUBCHEM.csv.gz -d
 
 # Split in chuncks 
 echo "Processing raw files..."
-python ./scripts/preprocessing_PUBCHEM.py --chunk_size 100000
+python ./scripts/preprocessing_PUBCHEM.py --chunk_size 1000000
 
 # Use RDKit to: 1) Remove invalid smiles, 2) Split the dataset, 3) Convert smiles to graphs
 echo "Processing smiles with RDKit..."
