@@ -12,4 +12,4 @@ rm raw/BACE.csv
 
 # Use RDKit to: 1) Remove invalid smiles, 2) Split the dataset, 3) Convert smiles to graphs
 echo "Processing smiles with RDKit..."
-python ./utils/smiles_to_graphs.py --dataset_name BACE --splitter random --split_percentage 0.9 0.05 0.05 --map_size 500000
+python ./utils/smiles_to_graphs.py --dataset_name BACE --splitter random --split_percentage 0.9 0.05 0.05 --map_size 5000000
