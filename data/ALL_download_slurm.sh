@@ -4,6 +4,7 @@
 #SBATCH --error=logs/job%j.err
 #SBATCH --time=24:00:00
 #SBATCH --partition=CPU
+#SBATCH --cpus-per-task=100
 
 set -x
 sh BACE_download.sh

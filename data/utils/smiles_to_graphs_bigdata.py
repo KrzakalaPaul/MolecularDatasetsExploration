@@ -7,6 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 from multiprocessing import Pool
 import lmdb
+from multiprocessing import cpu_count
 
 def add_size_to_db(env, size):
     with env.begin(write=True) as txn:
@@ -80,12 +81,12 @@ if __name__ == "__main__":
         required=True,
         help="Split percentages for train and validation sets.",
     )
-    parser.add_argument("--n_threads", type=int, default=8, help="Number of threads.")
+   
     args = parser.parse_args()
     
     dataset_name = args.dataset_name
     train_percentage, valid_percentage = args.split_percentage
-    n_threads = args.n_threads  
+    n_threads = cpu_count()
     
     smiles_path = f"smiles/{dataset_name}"
     smiles_files = os.listdir(smiles_path)
