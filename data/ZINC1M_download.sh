@@ -13,9 +13,9 @@ rm raw/ZINC1M.tar
 
 # Convert to smiles csv
 echo "Preprocessing raw files..."
-python ./scripts/preprocessing_ZINCM.py --size 1M --chunk_size 100000
+python ./scripts/preprocessing_ZINCM.py --size 1M --chunk_size 1000000
 rm raw/ZINC1M.csv
 
 # Use RDKit to: 1) Remove invalid smiles, 2) Split the dataset, 3) Convert smiles to graphs
 echo "Processing smiles with RDKit..."
-python ./utils/smiles_to_graphs_bigdata.py --dataset_name ZINC1M --split_percentage 0.99 0.01 --n_threads 8
+python ./utils/smiles_to_graphs_bigdata.py --dataset_name ZINC1M --split_percentage 0.99 0.01 

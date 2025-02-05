@@ -18,4 +18,4 @@ rm raw/ZINC10M.csv
 
 # Use RDKit to: 1) Remove invalid smiles, 2) Split the dataset, 3) Convert smiles to graphs
 echo "Processing smiles with RDKit..."
-python ./utils/smiles_to_graphs_bigdata.py --dataset_name ZINC10M --split_percentage 0.99 0.01 --n_threads 8
+python ./utils/smiles_to_graphs_bigdata.py --dataset_name ZINC10M --split_percentage 0.99 0.01 
