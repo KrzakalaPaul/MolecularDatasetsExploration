@@ -47,17 +47,17 @@ class LMDBDataset:
             
         node_labels = graph["node_labels"]
         adjacency_matrix = graph["adjacency_matrix"]
-        edges_labels = graph["edges_labels"]
+        edge_labels = graph["edge_labels"]
         SP_matrix = graph["SP_matrix"]
         
         node_labels = torch.nn.functional.one_hot(torch.tensor(node_labels, dtype=torch.long), num_classes=self.n_node_labels)
         adjacency_matrix = torch.tensor(adjacency_matrix.todense())
-        edges_labels = torch.nn.functional.one_hot(torch.tensor(edges_labels.todense(), dtype=torch.long), num_classes=self.n_edge_labels)
+        edge_labels = torch.nn.functional.one_hot(torch.tensor(edge_labels.todense(), dtype=torch.long), num_classes=self.n_edge_labels)
         SP_matrix = torch.tensor(SP_matrix)
     
         graph = {'node_labels': node_labels,
                  'adjacency_matrix': adjacency_matrix,
-                 'edges_labels': edges_labels,
+                 'edge_labels': edge_labels,
                  'SP_matrix': SP_matrix}
             
         return graph
