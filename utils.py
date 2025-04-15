@@ -8,6 +8,9 @@ import os
 import lmdb
 import pickle
 from functools import lru_cache
+from torch_geometric.data import Data
+import torch.nn.functional as F
+import torch
 
 # -------------------------------- SMIES TO GRAPHS -------------------------------- #
 
@@ -78,6 +81,77 @@ def smiles2graph(smiles, max_size, valid_atomic_nums, valid_bond_types):
 
     return graph
 
+def smiles2geometricTensor(smiles, max_size, valid_atomic_nums, valid_bond_types):
+    RDLogger.DisableLog('rdApp.*')
+    mol = MolFromSmiles(smiles)
+    if mol is None:
+        return None
+
+    node_labels = []
+    for atom in mol.GetAtoms():
+        label = safe_index(valid_atomic_nums, atom.GetAtomicNum())
+        if label is None:
+            return None
+        node_labels.append(label)
+
+    node_labels = torch.tensor(node_labels, dtype=torch.long)
+    size = node_labels.size(0)
+    if size > max_size:
+        return None
+
+    edges_i = []
+    edges_j = []
+
+    for bond in mol.GetBonds():
+        i = bond.GetBeginAtomIdx()
+        j = bond.GetEndAtomIdx()
+        edges_i += [i, j]
+        edges_j += [j, i]
+
+    edge_index = torch.tensor([edges_i, edges_j], dtype=torch.long)
+    x = F.one_hot(node_labels, num_classes=len(valid_atomic_nums)).float() 
+    return Data(x=x, edge_index=edge_index)
+
+# -------------------------------- LMDB UTILS  -------------------------------- #
+
+class LMDBDataset:
+    def __init__(self, db_path, split="train"):
+        self.db_path = os.path.join(db_path, split+".lmdb")
+        assert os.path.isfile(self.db_path), "{} not found".format(self.db_path)
+        env = self.connect_db(self.db_path)
+        self.dataset_size = read(env, "size")
+
+    def connect_db(self, lmdb_path, save_to_self=False):
+        env = lmdb.open(
+            lmdb_path,
+            subdir=False,
+            readonly=True,
+            lock=False,
+            readahead=False,
+            meminit=False,
+            max_readers=256,
+        )
+        if not save_to_self:
+            return env
+        else:
+            self.env = env
+
+    def __len__(self):
+        return self.dataset_size
+    
+    def load_idx(self, idx):
+        if not hasattr(self, "env"):
+            self.connect_db(self.db_path, save_to_self=True)
+        data = read(self.env, str(idx))
+        return data
+
+    @lru_cache()
+    def __getitem__(self, idx):
+        if not hasattr(self, "env"):
+            self.connect_db(self.db_path, save_to_self=True)
+        datapoint_pickled = self.env.begin().get(f"{idx}".encode("ascii"))
+        data = pickle.loads(datapoint_pickled)
+        return data
 # -------------------------------- LMDB UTILS  -------------------------------- #
 
 def open_db(path, split, mapsize=1099511627776, delete=True):
@@ -119,41 +193,3 @@ def add_data_list(data_list, env):
             txn.put(key, pickle.dumps(data))
     write_size(env, n + len(data_list)) 
 
-class LMDBDataset:
-    def __init__(self, db_path, split="train"):
-        self.db_path = os.path.join(db_path, split+".lmdb")
-        assert os.path.isfile(self.db_path), "{} not found".format(self.db_path)
-        env = self.connect_db(self.db_path)
-        self.dataset_size = read(env, "size")
-
-    def connect_db(self, lmdb_path, save_to_self=False):
-        env = lmdb.open(
-            lmdb_path,
-            subdir=False,
-            readonly=True,
-            lock=False,
-            readahead=False,
-            meminit=False,
-            max_readers=256,
-        )
-        if not save_to_self:
-            return env
-        else:
-            self.env = env
-
-    def __len__(self):
-        return self.dataset_size
-    
-    def load_idx(self, idx):
-        if not hasattr(self, "env"):
-            self.connect_db(self.db_path, save_to_self=True)
-        data = read(self.env, str(idx))
-        return data
-
-    @lru_cache()
-    def __getitem__(self, idx):
-        if not hasattr(self, "env"):
-            self.connect_db(self.db_path, save_to_self=True)
-        datapoint_pickled = self.env.begin().get(f"{idx}".encode("ascii"))
-        data = pickle.loads(datapoint_pickled)
-        return data

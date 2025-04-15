@@ -1,5 +1,5 @@
 import pandas as pd
-from utils import smiles2graph as smiles2graph_0
+from utils import smiles2geometricTensor as smiles2graph_0
 from utils import open_db, add_data_list, write
 from functools import partial
 from multiprocessing import Pool
